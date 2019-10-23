@@ -1,0 +1,48 @@
+#include<iostream>
+#include<cstdlib>
+using namespace std;
+
+__global__ void mul(int *a,int *b,int *c,int n){
+  int tid=threadIdx.x+blockIdx.x*blockDim.x;
+  int sum=0;
+  if(tid<n){
+    for(int i=0;i<n;i++){
+      sum+=a[tid*n+i]*b[tid];
+    }
+    c[tid]=sum;
+  }
+}
+
+int main(){
+  int n;
+  int *a,*b,*c;
+  int *da,*db,*dc;
+  cout<<"Enter the vector size: ";
+  cin>>n;
+  a=new int[n*n];
+  b=new int[n];
+  c=new int[n];
+  for(int i=0;i<n;i++){
+    for(int j=0;j<n;j++){
+      a[i*n+j]=rand()%50;
+    }
+    b[i]=rand()%50;
+  }
+  int size=n*sizeof(int);
+  int matsize=n*n*sizeof(int);
+  cudaMalloc(&da,matsize);
+  cudaMalloc(&db,size);
+  cudaMalloc(&dc,size);
+  cudaMemcpy(da,a,matsize,cudaMemcpyHostToDevice);
+  cudaMemcpy(db,b,size,cudaMemcpyHostToDevice);
+  cudaMemcpy(dc,c,size,cudaMemcpyHostToDevice);
+  int threads=1024;
+  int blocks=(n+threads-1)/threads;
+  mul<<<blocks,threads>>>(da,db,dc,n);
+  cudaMemcpy(c,dc,size,cudaMemcpyDeviceToHost);
+  cout<<"Product vector is : ";
+  for(int i=0;i<n;i++){
+    cout<<c[i]<<" ";
+  }
+  return 0;
+}

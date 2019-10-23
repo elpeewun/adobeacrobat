@@ -1,0 +1,58 @@
+#include<iostream>
+#include<cstdlib>
+using namespace std;
+
+__global__ void mul(int *a,int *b,int *c,int n){
+  int tidx=threadIdx.x+blockIdx.x*blockDim.x;
+  int tidy=threadIdx.y+blockIdx.y*blockDim.y;
+  int sum=0;
+  if(tidx<n&&tidy<n){
+    for(int i=0;i<n;i++){
+      sum+=a[tidy*n+i]*b[i*n+tidx];
+    }
+    c[tidy*n+tidx]=sum;
+  }
+}
+
+int main(){
+  int n;
+  int *a,*b,*c;
+  int *da,*db,*dc;
+  cout<<"Enter the vector size: ";
+  cin>>n;
+  a=new int[n*n];
+  b=new int[n*n];
+  c=new int[n*n];
+  for(int i=0;i<n;i++){
+    for(int j=0;j<n;j++){
+      a[i*n+j]=rand()%50;
+      b[i*n+j]=rand()%50;
+    }
+  }
+  int matsize=n*n*sizeof(int);
+  cudaMalloc(&da,matsize);
+  cudaMalloc(&db,matsize);
+  cudaMalloc(&dc,matsize);
+  cudaMemcpy(da,a,matsize,cudaMemcpyHostToDevice);
+  cudaMemcpy(db,b,matsize,cudaMemcpyHostToDevice);
+  cudaMemcpy(dc,c,matsize,cudaMemcpyHostToDevice);
+  dim3 threads(n, n);
+  dim3 blocks(1, 1);
+
+  if(n*n>512){
+      threads.x=512;
+      threads.y=512;
+      blocks.x=ceil((double)n/(double)threads.x);
+      blocks.y=ceil((double)n/(double)threads.y);
+  }
+  mul<<<blocks,threads>>>(da,db,dc,n);
+  cudaMemcpy(c,dc,matsize,cudaMemcpyDeviceToHost);
+  cout<<"Product vector is : ";
+  for(int i=0;i<n;i++){
+    for(int j=0;j<n;j++){
+      cout<<c[i*n+j]<<" ";
+    }
+    cout<<endl;
+  }
+  return 0;
+}
